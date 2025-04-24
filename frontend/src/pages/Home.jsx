@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { userService } from '../services/api';
 import ChatList from '../components/ChatList';
 import NewChatForm from '../components/NewChatForm';
-import { getSocket, initSocket } from '../services/socket';
+import { initSocket } from '../services/socket';
 
 const Home = () => {
   const [chats, setChats] = useState([]);
@@ -14,6 +14,26 @@ const Home = () => {
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
+  const fetchChats = async () => {
+    try {
+      const response = await userService.getChats();
+      // Check the response format and set chats correctly
+      console.log("Chats response:", response.data);
+      if (Array.isArray(response.data)) {
+        setChats(response.data);
+      } else if (response.data && Array.isArray(response.data.chats)) {
+        setChats(response.data.chats);
+      } else {
+        setChats([]); // Fallback to empty array
+        console.error("Unexpected chats format:", response.data);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching chats:", error);
+      setError('Failed to load chats');
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Initialize socket
@@ -25,48 +45,52 @@ const Home = () => {
     
     socketRef.current = initSocket(token);
 
-    const fetchChats = async () => {
-      try {
-        const response = await userService.getChats();
-        setChats(response.data.chats || []);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching chats:", error);
-        setError('Failed to load chats');
-        setLoading(false);
-      }
-    };
-
     fetchChats();
 
-    // Listen for new messages to update chat list
+    // Socket event listeners for real-time updates
+    socketRef.current.on('connect', () => {
+      console.log('Connected to socket server from Home');
+    });
+
     socketRef.current.on('receive_message', (message) => {
+      console.log('Message received in Home:', message);
       // Update chats when a new message arrives
+      fetchChats();
+    });
+    
+    socketRef.current.on('new_message_notification', (data) => {
+      console.log('New message notification:', data);
       fetchChats();
     });
 
     return () => {
       if (socketRef.current) {
         socketRef.current.off('receive_message');
+        socketRef.current.off('new_message_notification');
       }
     };
   }, [navigate]);
 
+
   const handleStartNewChat = async (mobile) => {
     try {
-      const response = await userService.findByMobile(mobile);
-      if (response.data) {
-        // Check if chat already exists
-        const existingChat = chats.find(chat => chat.participants.some(p => p.mobile === mobile));
-        
-        if (existingChat) {
-          navigate(`/chat/${mobile}`);
-        } else {
-          // Start a new chat and redirect
-          navigate(`/chat/${mobile}`);
-        }
+      // Clear previous errors
+      setError('');
+      
+      // Don't allow chat with yourself
+      if (mobile === currentUser.mobile) {
+        setError("You can't chat with yourself");
+        return;
       }
+      
+      // Check if the user exists
+      const userResponse = await userService.findByMobile(mobile);
+      console.log("User found:", userResponse.data);
+      
+      // Navigate to chat with this user
+      navigate(`/chat/${mobile}`);
     } catch (error) {
+      console.error("Error starting chat:", error);
       if (error.response && error.response.status === 404) {
         setError('User not found. Make sure they are registered.');
       } else {

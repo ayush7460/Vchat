@@ -23,12 +23,18 @@ export const authService = {
 // User services
 export const userService = {
   findByMobile: (mobile) => API.get(`/users/${mobile}`),
-  getChats: () => API.get('/users/chats/all') // Make sure this matches your backend route
+  getChats: () => API.get('/users/chats/all')
 };
 
 // Message services
 export const messageService = {
-  sendMessage: (receiverMobile, text) => API.post('/messages', { receiver: receiverMobile, text }),
+  sendMessage: (receiverMobile, text, chatId = null) => {
+    const payload = { receiver: receiverMobile, text };
+    if (chatId) {
+      payload.chatId = chatId;
+    }
+    return API.post('/messages', payload);
+  },
   getMessages: (otherUserMobile) => API.get(`/messages/${otherUserMobile}`)
 };
 

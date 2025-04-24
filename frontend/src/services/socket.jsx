@@ -1,19 +1,47 @@
-// frontend/src/services/socket.jsx - Fixed connection URL
 import { io } from 'socket.io-client';
 
 let socket;
 
 export const initSocket = (token) => {
-  socket = io('http://localhost:5000', {  // Update this to match your backend URL
+  if (socket) {
+    // If socket exists and is connected, return it
+    if (socket.connected) {
+      return socket;
+    }
+    // Otherwise disconnect to create a new one
+    socket.disconnect();
+  }
+  
+  console.log("Initializing socket with token:", token ? "Token exists" : "No token");
+  
+  socket = io('http://localhost:5000', {
     auth: {
       token
-    }
+    },
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+  
+  // Add error handlers
+  socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err.message);
+  });
+  
+  socket.on('error', (err) => {
+    console.error('Socket error:', err);
+  });
+  
+  socket.on('connect', () => {
+    console.log('Socket connected:', socket.id);
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected:', reason);
   });
   
   return socket;
 };
-
-// Rest of the file remains the same...
 
 export const getSocket = () => {
   if (!socket) {

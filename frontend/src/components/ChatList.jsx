@@ -41,6 +41,7 @@ const ChatList = ({ chats, currentUserMobile, onChatClick }) => {
       {chats.map((chat) => {
         const otherUser = getOtherUser(chat);
         
+        // In ChatList.jsx
         return (
           <div 
             key={chat._id} 
@@ -59,8 +60,8 @@ const ChatList = ({ chats, currentUserMobile, onChatClick }) => {
               </div>
               <div className="chat-item-preview-row">
                 <p className="chat-item-message">{getLastMessagePreview(chat)}</p>
-                {chat.unreadCount > 0 && (
-                  <div className="unread-badge">{chat.unreadCount}</div>
+                {chat.unreadCounts > 0 && (
+                  <div className="unread-badge">{chat.unreadCounts}</div>
                 )}
               </div>
             </div>
